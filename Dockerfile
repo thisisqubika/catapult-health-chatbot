@@ -6,6 +6,7 @@ WORKDIR /usr/src/app
 
 # Copy the current directory contents into the container at /usr/src/app
 COPY . /usr/src/app
+COPY .streamlit/secrets.toml /usr/src/app/.streamlit/secrets.toml
 
 # Create the Conda environment
 RUN conda create --name snowpark-llm-chatbot --override-channels -c conda-forge python=3.10 numpy pandas

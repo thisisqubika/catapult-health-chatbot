@@ -14,9 +14,6 @@ export TAG_NAME=${LAMBDA}-${ENV}
 export VERSION=$(shell git rev-parse --short HEAD)
 
 
-build:
-	@docker build --platform=linux/amd64 -t ${LAMBDA}:${VERSION} .
-
 install:
 	@( \
 		if [ ! -d .venv ]; then python3 -m venv --copies .venv; fi; \
@@ -63,7 +60,6 @@ tests:
 build:
 	@docker build --platform=linux/amd64 -t ${LAMBDA}:${VERSION} .
 
-# ...other definitions...
 
 push:
     @aws lightsail push-container-image --service-name "${LAMBDA}" --label "${LAMBDA}" --image "${LAMBDA}:${VERSION}"
@@ -102,7 +98,7 @@ push-app:
 deploy:
 	@$(eval IMAGE_TAG := $(shell git rev-parse --short HEAD))
 	@$(eval FULL_IMAGE_NAME := "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${LAMBDA}:${IMAGE_TAG}")
-	
+
 	@echo "{" > containers.json
 	@echo "  \"${LAMBDA}\": {" >> containers.json
 	@echo "      \"image\": \"${FULL_IMAGE_NAME}\"," >> containers.json
@@ -113,7 +109,6 @@ deploy:
 	@echo "}" >> containers.json
 	
 	@aws lightsail create-container-service-deployment --service-name ${LAMBDA} --containers file://containers.json --public-endpoint file://public-endpoint.json
-
 
 
 
