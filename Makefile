@@ -10,7 +10,12 @@ export AWS_REGION=us-east-1
 export AWS_ACCOUNT_ID=789524919849
 export ECR_URL=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 export TAG_NAME=${LAMBDA}-${ENV}
-export VERSION=latest
+# export VERSION=latest
+export VERSION=$(shell git rev-parse --short HEAD)
+
+
+build:
+	@docker build --platform=linux/amd64 -t ${LAMBDA}:${VERSION} .
 
 install:
 	@( \
@@ -56,7 +61,7 @@ tests:
 		--rootdir=. $${TEST};
 
 build:
-	@docker build --platform=linux/amd64 -t ${LAMBDA} .
+	@docker build --platform=linux/amd64 -t ${LAMBDA}:${VERSION} .
 
 local-build:
 	@docker build -t ${LAMBDA} .
@@ -92,3 +97,6 @@ check-state:
 
 cleanup:
 	@aws lightsail delete-container-service --service-name ${LAMBDA}
+
+get-version:
+	@echo $(VERSION)

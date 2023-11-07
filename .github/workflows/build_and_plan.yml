@@ -51,11 +51,13 @@ jobs:
         run: |
               set -e
               service_name="catapult-health-chatbot"
-              commit_sha=$(git rev-parse --short HEAD)
-              image_tag="${commit_sha}" # Create a tag with the commit SHA
               
-              # Tag and push the image with the commit SHA
-              aws lightsail push-container-image --service-name "$service_name" --label "$service_name" --image "$service_name:$image_tag"
+              # Retrieve the VERSION from the Makefile
+              version=$(make -s get-version)
+              
+              # Push the image using the VERSION tag
+              aws lightsail push-container-image --service-name "$service_name" --label "$service_name" --image "${LAMBDA}:${version}"
+          
     
       # - name: Push Docker image to ECR
       #   run: |
