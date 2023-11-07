@@ -50,7 +50,7 @@ jobs:
       - name: Push Docker image to ECR
         run: |
           set -e
-          make build-push
+          make push
 
       # - name: Push Docker image to ECR
       #   run: |

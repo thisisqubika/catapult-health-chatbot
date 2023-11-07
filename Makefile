@@ -65,7 +65,7 @@ build:
 
 # ...other definitions...
 
-build-push:
+push:
     @aws lightsail push-container-image --service-name "${LAMBDA}" --label "${LAMBDA}" --image "${LAMBDA}:${VERSION}"
 
 local-build:
@@ -103,16 +103,17 @@ deploy:
 	@$(eval IMAGE_TAG := $(shell git rev-parse --short HEAD))
 	@$(eval FULL_IMAGE_NAME := "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${LAMBDA}:${IMAGE_TAG}")
 	
-	@echo '{
-	  "${LAMBDA}": {
-	      "image": "${FULL_IMAGE_NAME}",
-	      "ports": {
-	          "8501": "HTTP"
-	      }
-	  }
-	}' > containers.json
+	@echo "{" > containers.json
+	@echo "  \"${LAMBDA}\": {" >> containers.json
+	@echo "      \"image\": \"${FULL_IMAGE_NAME}\"," >> containers.json
+	@echo "      \"ports\": {" >> containers.json
+	@echo "          \"8501\": \"HTTP\"" >> containers.json
+	@echo "      }" >> containers.json
+	@echo "  }" >> containers.json
+	@echo "}" >> containers.json
 	
 	@aws lightsail create-container-service-deployment --service-name ${LAMBDA} --containers file://containers.json --public-endpoint file://public-endpoint.json
+
 
 
 
