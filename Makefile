@@ -63,6 +63,11 @@ tests:
 build:
 	@docker build --platform=linux/amd64 -t ${LAMBDA}:${VERSION} .
 
+# ...other definitions...
+
+build-push:
+    @aws lightsail push-container-image --service-name "${LAMBDA}" --label "${LAMBDA}" --image "${LAMBDA}:${VERSION}"
+
 local-build:
 	@docker build -t ${LAMBDA} .
 

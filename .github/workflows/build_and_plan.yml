@@ -47,18 +47,22 @@ jobs:
               aws lightsail create-container-service --service-name "$service_name" --power nano --scale 1 
             fi
 
+      # - name: Push Docker image to ECR
+      #   run: |
+      #         set -e
+      #         service_name="catapult-health-chatbot"
+              
+      #         # Retrieve the VERSION from the Makefile
+      #         version=$(make -s get-version)
+              
+      #         # Push the image using the VERSION tag
+      #         aws lightsail push-container-image --service-name "$service_name" --label "$service_name" --image "${LAMBDA}:${version}"
+    
       - name: Push Docker image to ECR
         run: |
-              set -e
-              service_name="catapult-health-chatbot"
-              
-              # Retrieve the VERSION from the Makefile
-              version=$(make -s get-version)
-              
-              # Push the image using the VERSION tag
-              aws lightsail push-container-image --service-name "$service_name" --label "$service_name" --image "${LAMBDA}:${version}"
-          
-    
+          set -e
+          make build-push
+
       # - name: Push Docker image to ECR
       #   run: |
       #     set -e
