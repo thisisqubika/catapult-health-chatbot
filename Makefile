@@ -94,8 +94,11 @@ push-app:
 	
 deploy:
 	@$(eval IMAGE_TAG := $(shell git rev-parse --short HEAD))
-	@sed -i 's/TAG_PLACEHOLDER/$(IMAGE_TAG)/g' containers.json
+	@$(eval FULL_IMAGE_NAME := "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${LAMBDA}:${IMAGE_TAG}")
+
+	@sed -i "s|:catapult-health-chatbot.catapult-health-chatbot:TAG_PLACEHOLDER|${FULL_IMAGE_NAME}|g" containers.json
 	@aws lightsail create-container-service-deployment --service-name ${LAMBDA} --containers file://containers.json --public-endpoint file://public-endpoint.json
+
 
 check-state:
 	@aws lightsail get-container-services --service-name ${LAMBDA}
