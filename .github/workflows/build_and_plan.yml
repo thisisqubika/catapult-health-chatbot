@@ -46,11 +46,22 @@ jobs:
               echo "Container service $service_name does not exist, creating it"
               aws lightsail create-container-service --service-name "$service_name" --power nano --scale 1 
             fi
+
       - name: Push Docker image to ECR
         run: |
-          set -e
-            service_name="catapult-health-chatbot"
-            aws lightsail push-container-image --service-name "$service_name" --label "$service_name" --image "$service_name"
+              set -e
+              service_name="catapult-health-chatbot"
+              commit_sha=$(git rev-parse --short HEAD)
+              image_tag="${commit_sha}" # Create a tag with the commit SHA
+              
+              # Tag and push the image with the commit SHA
+              aws lightsail push-container-image --service-name "$service_name" --label "$service_name" --image "$service_name:$image_tag"
+    
+      # - name: Push Docker image to ECR
+      #   run: |
+      #     set -e
+      #       service_name="catapult-health-chatbot"
+      #       aws lightsail push-container-image --service-name "$service_name" --label "$service_name" --image "$service_name"
 
   deploy:
     needs: build-image
@@ -69,4 +80,6 @@ jobs:
         run: |
           set -e
           make deploy
+
+
           

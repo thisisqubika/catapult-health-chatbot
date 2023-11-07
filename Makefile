@@ -83,6 +83,8 @@ push-app:
 	@aws --profile moove-it lightsail push-container-image --service-name ${LAMBDA} --label ${LAMBDA} --image ${LAMBDA}
 	
 deploy:
+	@$(eval IMAGE_TAG := $(shell git rev-parse --short HEAD))
+	@sed -i 's/TAG_PLACEHOLDER/$(IMAGE_TAG)/g' containers.json
 	@aws lightsail create-container-service-deployment --service-name ${LAMBDA} --containers file://containers.json --public-endpoint file://public-endpoint.json
 
 check-state:
