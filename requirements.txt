@@ -1,0 +1,7 @@
+aws-lambda-powertools>=2.4.0
+awswrangler >= 2.4.0
+boto3 >= 1.26.1
+pandas >= 1.5.0
+streamlit
+matplotlib
+pandas

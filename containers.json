@@ -1,0 +1,8 @@
+{
+  "catapult-health-chatbot": {
+      "image": ":catapult-health-chatbot.catapult-health-chatbot.20",
+      "ports": {
+          "8501": "HTTP"
+      }
+  }
+}

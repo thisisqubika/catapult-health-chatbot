@@ -1,0 +1,8 @@
+.gitlab-ci.yaml
+Dockefile
+docs/
+event.local.json
+Makefile
+README.md
+terraform/
+tests/

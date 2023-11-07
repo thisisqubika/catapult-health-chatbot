@@ -1,0 +1,28 @@
+# src/Dockerfile
+
+FROM python:3.10-slim
+
+# By default, listen on port 8501
+EXPOSE 8501
+
+WORKDIR /src
+
+# Copy the dependencies file to the working directory
+COPY requirements-dev.txt /src/
+# requirements.txt es el de PRODUCCION
+
+# Install any dependencies
+RUN pip install -qU pip
+# requirements.txt es el de PRODUCCION
+RUN pip install -r requirements-dev.txt
+
+# Copy the content of the local src directory to the working directory
+COPY . /src/
+
+#grant permission to execute
+RUN chmod +x ./src/app.py
+
+# Set environment variable from .env file
+# COPY .env /src/.env
+
+ENTRYPOINT ["streamlit", "run", "./src/app.py", "--server.port=8501", "--server.address=0.0.0.0"]

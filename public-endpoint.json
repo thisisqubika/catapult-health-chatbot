@@ -1,0 +1,4 @@
+{
+    "containerName": "catapult-health-chatbot",
+    "containerPort": 8501
+}
