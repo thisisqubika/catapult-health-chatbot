@@ -92,12 +92,28 @@ create-ecr:
 push-app:
 	@aws --profile moove-it lightsail push-container-image --service-name ${LAMBDA} --label ${LAMBDA} --image ${LAMBDA}
 	
+# deploy:
+# 	@$(eval IMAGE_TAG := $(shell git rev-parse --short HEAD))
+# 	@$(eval FULL_IMAGE_NAME := "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${LAMBDA}:${IMAGE_TAG}")
+
+# 	@sed -i "s|:catapult-health-chatbot.catapult-health-chatbot:TAG_PLACEHOLDER|${FULL_IMAGE_NAME}|g" containers.json
+# 	@aws lightsail create-container-service-deployment --service-name ${LAMBDA} --containers file://containers.json --public-endpoint file://public-endpoint.json
+
 deploy:
 	@$(eval IMAGE_TAG := $(shell git rev-parse --short HEAD))
 	@$(eval FULL_IMAGE_NAME := "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${LAMBDA}:${IMAGE_TAG}")
-
-	@sed -i "s|:catapult-health-chatbot.catapult-health-chatbot:TAG_PLACEHOLDER|${FULL_IMAGE_NAME}|g" containers.json
+	
+	@echo '{
+	  "${LAMBDA}": {
+	      "image": "${FULL_IMAGE_NAME}",
+	      "ports": {
+	          "8501": "HTTP"
+	      }
+	  }
+	}' > containers.json
+	
 	@aws lightsail create-container-service-deployment --service-name ${LAMBDA} --containers file://containers.json --public-endpoint file://public-endpoint.json
+
 
 
 check-state:
