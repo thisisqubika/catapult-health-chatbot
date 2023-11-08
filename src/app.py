@@ -2,13 +2,20 @@ import openai
 import re
 import streamlit as st
 from prompts import get_system_prompt
-
+import boto3
 
 st.title("🏥 Catapult-Healthcare Bot")
 
+def get_ssm_parameter(parameter_name):
+    """Get parameter from SSM."""
+    ssm = boto3.client('ssm', region_name="us-east-1")
+    parameter = ssm.get_parameter(Name=parameter_name, WithDecryption=True)
+    return parameter["Parameter"]["Value"]
+
+OPENAI_API_KEY = "/openai-api-key"
 
 # Initialize the chat messages history
-openai.api_key = st.secrets.OPENAI_API_KEY
+openai.api_key = get_ssm_parameter(OPENAI_API_KEY)
 if "messages" not in st.session_state:
     # system prompt includes table information, rules, and prompts the LLM to produce
     # a welcome message to the user.

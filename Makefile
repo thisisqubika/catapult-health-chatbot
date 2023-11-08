@@ -60,7 +60,6 @@ tests:
 build:
 	@docker build --platform=linux/amd64 -t ${LAMBDA}:${VERSION} .
 
-
 push:
     @aws lightsail push-container-image --service-name "${LAMBDA}" --label "${LAMBDA}" --image "${LAMBDA}:${VERSION}"
 
@@ -68,8 +67,8 @@ local-build:
 	@docker build -t ${LAMBDA} .
 
 run:
-	@docker run -d -p 8000:8501 ${LAMBDA}
-
+	@docker run -d -p 8501:8501 ${LAMBDA}
+# :${VERSION}
 stop:
 	@docker stop $$(docker ps -a -q)
 
@@ -86,7 +85,9 @@ create-ecr:
 	@aws lightsail create-container-service --service-name ${LAMBDA} --power nano --scale 1
 
 push-app:
-	@aws --profile moove-it lightsail push-container-image --service-name ${LAMBDA} --label ${LAMBDA} --image ${LAMBDA}
+	@aws lightsail push-container-image --region ${AWS_REGION} --service-name ${LAMBDA} --label ${LAMBDA} --image "${LAMBDA}:${VERSION}"
+
+# --profile moove-it 
 	
 # deploy:
 # 	@$(eval IMAGE_TAG := $(shell git rev-parse --short HEAD))

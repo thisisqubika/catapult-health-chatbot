@@ -6,7 +6,6 @@ WORKDIR /usr/src/app
 
 # Copy the current directory contents into the container at /usr/src/app
 COPY . /usr/src/app
-COPY .streamlit/secrets.toml /usr/src/app/.streamlit/secrets.toml
 
 # Create the Conda environment
 RUN conda create --name snowpark-llm-chatbot --override-channels -c conda-forge python=3.10 numpy pandas
@@ -18,8 +17,7 @@ SHELL ["conda", "run", "-n", "snowpark-llm-chatbot", "/bin/bash", "-c"]
 RUN for i in {1..5}; do conda install -c conda-forge snowflake-snowpark-python openai && break || sleep 15; done
 
 # Install Streamlit
-RUN pip install streamlit
-RUN pip install openai==0.28.0
+RUN pip install streamlit openai==0.28.0 boto3
 
 # Make src/app.py executable
 RUN chmod +x ./src/app.py
