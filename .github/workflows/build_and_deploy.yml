@@ -1,19 +1,13 @@
-name: Build, Push Docker Image and Deploy with Terraform
+name: Build, Push Docker Image and Plan with Terraform
 
 on:
-  pull_request:
-    branches: 
+  push:
+    branches:
+      - dev
       - main
-    types: [closed]
-
-env:
-  ECR_URL : 789524919849.dkr.ecr.us-east-1.amazonaws.com
-  IMG_NAME : img-catapult-healthcare-chatbot
-  IMAGE_TAG : latest
-  TF_WORKING_DIR: terraform
 
 jobs:
-  build-and-push:
+  build-image:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -34,69 +28,50 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Check if ECR repository exists
-        id: check-ecr-repo
+      - name: Install lightsailctl
         run: |
-          aws ecr describe-repositories --repository-names ${{ env.IMG_NAME }} || exit 0
-          echo "::set-output name=exists::true"
+          # Install lightsailctl using your preferred method
+          # For example, you can use curl or any package manager
+          # Replace the command below with the actual installation command
+          curl "https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl" -o "/usr/local/bin/lightsailctl"
+          sudo chmod +x /usr/local/bin/lightsailctl
 
-      - name: Create ECR repository if it doesn't exist
-        if: steps.check-ecr-repo.outputs.exists != 'true'
-        run: |
-          aws ecr create-repository --repository-name ${{ env.IMG_NAME }}
-          echo "::set-output name=created::true"
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Tag Docker image
-        run: |
-          make image-tag IMAGE_TAG=${{ env.IMAGE_TAG }}
-
-      - name: Push Docker image to Amazon ECR
-        run: docker push ${{ env.ECR_URL }}/${{ env.IMG_NAME }}:${{ env.IMAGE_TAG }}
-
-
-  deploy-with-terraform:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Deploy using Terraform
-        run: |
-          cd $TF_WORKING_DIR
-          terraform init
-          terraform plan -out=tfplan
-          terraform apply tfplan
-
-  lambda-function:
-    needs: deploy-with-terraform
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Create or Update Lambda Function
+      - name: Check if lightsail container service exists or create it
         run: |
           set -e
-          if make update-lambda; then
-            echo "Lambda function updated successfully"
-          else
-            echo "Lambda function not found, creating new function"
-            make create-lambda
-          fi
+            service_name="catapult-health-chatbot"
+            if aws lightsail get-container-services --service-name "$service_name" >/dev/null 2>&1; then
+              echo "Container service $service_name already exists"
+            else
+              echo "Container service $service_name does not exist, creating it"
+              aws lightsail create-container-service --service-name "$service_name" --power nano --scale 1 
+            fi
+    
+      - name: Push Docker image to ECR
+        run: |
+          set -e
+          make push
+
+      # - name: Push Docker image to ECR
+      #   run: |
+      #     set -e
+      #       service_name="catapult-health-chatbot"
+      #       aws lightsail push-container-image --service-name "$service_name" --label "$service_name" --image "$service_name"
+
+  deploy:
+    needs: build-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Deploy to Lightsail
+        run: |
+          set -e
+          make deploy
