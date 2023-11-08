@@ -61,7 +61,7 @@ build:
 	@docker build --platform=linux/amd64 -t ${LAMBDA}:${VERSION} .
 
 push:
-    @aws lightsail push-container-image --service-name "${LAMBDA}" --label "${LAMBDA}" --image "${LAMBDA}:${VERSION}"
+	@aws lightsail push-container-image --service-name "${LAMBDA}" --label "${LAMBDA}" --image "${LAMBDA}:${VERSION}"
 
 local-build:
 	@docker build -t ${LAMBDA} .
@@ -97,11 +97,11 @@ push-app:
 # 	@aws lightsail create-container-service-deployment --service-name ${LAMBDA} --containers file://containers.json --public-endpoint file://public-endpoint.json
 
 deploy:
-    @$(eval IMAGE_TAG := $(shell git rev-parse --short HEAD))
-    @$(eval FULL_IMAGE_NAME := "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${LAMBDA}:${IMAGE_TAG}")
-    @sed "s|your-image-name|${FULL_IMAGE_NAME}|g" containers.template.json > containers.json
-    @sed "s|catapult-health-chatbot|${LAMBDA}|g" public-endpoint.template.json > public-endpoint.json
-    @aws lightsail create-container-service-deployment --service-name ${LAMBDA} --containers file://containers.json --public-endpoint file://public-endpoint.json
+	@$(eval IMAGE_TAG := $(shell git rev-parse --short HEAD))
+	@$(eval FULL_IMAGE_NAME := "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${LAMBDA}:${IMAGE_TAG}")
+	@sed "s|your-image-name|${FULL_IMAGE_NAME}|g" containers.template.json > containers.json
+	@sed "s|catapult-health-chatbot|${LAMBDA}|g" public-endpoint.template.json > public-endpoint.json
+	@aws lightsail create-container-service-deployment --service-name ${LAMBDA} --containers file://containers.json --public-endpoint file://public-endpoint.json
 
 check-state:
 	@aws lightsail get-container-services --service-name ${LAMBDA}
