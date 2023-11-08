@@ -28,8 +28,8 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      - name: Upgrade AWS CLI
-        run: sudo pip install --upgrade awscli
+      # - name: Upgrade AWS CLI
+      #   run: sudo pip install --upgrade awscli
 
       - name: Install lightsailctl
         run: |
@@ -75,8 +75,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Upgrade AWS CLI
-        run: sudo pip install --upgrade awscli
+      # - name: Upgrade AWS CLI
+      #   run: sudo pip install --upgrade awscli
 
       - name: Deploy to Lightsail
         run: |
