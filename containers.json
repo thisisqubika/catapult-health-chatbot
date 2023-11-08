@@ -1,8 +1,11 @@
 {
-  "catapult-health-chatbot": {
-      "image": ":catapult-health-chatbot.catapult-health-chatbot:TAG_PLACEHOLDER",
-      "ports": {
-          "8501": "HTTP"
-      }
+  "catapult-health-chatbot": { 
+    "image": "your-image-name", 
+    "environment": {
+    },
+    "ports": {
+      "8501": "HTTP"  
+    },
+    "command": []
   }
 }

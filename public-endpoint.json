@@ -1,4 +1,13 @@
 {
-    "containerName": "catapult-health-chatbot",
-    "containerPort": 8501
-}
+    "containerName": "catapult-health-chatbot", 
+    "containerPort": 8501, 
+    "healthCheck": {
+      "healthyThreshold": 2,
+      "unhealthyThreshold": 5,
+      "timeoutSeconds": 4,
+      "intervalSeconds": 60,
+      "path": "/healthcheck",  
+      "successCodes": "200-299" 
+    }
+  }
+  
