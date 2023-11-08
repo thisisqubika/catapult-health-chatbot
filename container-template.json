@@ -1,0 +1,11 @@
+{
+    "catapult-health-chatbot": { 
+      "image": "your-image-name", 
+      "environment": {
+      },
+      "ports": {
+        "8501": "HTTP"  
+      },
+      "command": []
+    }
+  }
