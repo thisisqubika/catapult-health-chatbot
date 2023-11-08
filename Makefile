@@ -105,13 +105,19 @@ deploy:
 	@echo "      \"image\": \"${FULL_IMAGE_NAME}\"," >> containers.json
 	@echo "      \"ports\": {" >> containers.json
 	@echo "          \"8501\": \"HTTP\"" >> containers.json
+	@echo "      }," >> containers.json
+	@echo "      \"environment\": {}," >> containers.json
+	@echo "      \"healthCheck\": {" >> containers.json
+	@echo "          \"healthyThreshold\": 2," >> containers.json
+	@echo "          \"unhealthyThreshold\": 5," >> containers.json
+	@echo "          \"timeoutSeconds\": 4," >> containers.json
+	@echo "          \"intervalSeconds\": 30," >> containers.json
+	@echo "          \"path\": \"/\"" >> containers.json
 	@echo "      }" >> containers.json
 	@echo "  }" >> containers.json
 	@echo "}" >> containers.json
 	
 	@aws lightsail create-container-service-deployment --service-name ${LAMBDA} --containers file://containers.json --public-endpoint file://public-endpoint.json
-
-
 
 check-state:
 	@aws lightsail get-container-services --service-name ${LAMBDA}

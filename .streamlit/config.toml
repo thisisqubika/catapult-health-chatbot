@@ -1,0 +1,7 @@
+[logger]
+# Sets the level of logging: 'error', 'warning', 'info', or 'debug'.
+level = "debug"
+
+# Uncomment below to enable the debug log for Streamlit.
+# To see the debug log, you need to set your logging level to 'debug'.
+show_log_level = true

@@ -3,8 +3,20 @@ import re
 import streamlit as st
 from prompts import get_system_prompt
 import boto3
+import logging
+import sys
+
+# Set up root logger to output to stdout
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+
+# Example of logging in your application code
+logger = logging.getLogger(__name__)
+logger.info('This is an informational message.')
+
 
 st.title("🏥 Catapult-Healthcare Bot")
+
+
 
 def get_ssm_parameter(parameter_name):
     """Get parameter from SSM."""
