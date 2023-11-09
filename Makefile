@@ -60,6 +60,9 @@ tests:
 build:
 	@docker build --platform=linux/amd64 -t ${LAMBDA}:${VERSION} .
 
+build-local-to-aws:
+	@docker build --platform=linux/amd64 -t ${LAMBDA} .
+
 push:
 	@aws lightsail push-container-image --service-name "${LAMBDA}" --label "${LAMBDA}" --image "${LAMBDA}:${VERSION}"
 
@@ -86,6 +89,10 @@ create-ecr:
 
 push-app:
 	@aws lightsail push-container-image --region ${AWS_REGION} --service-name ${LAMBDA} --label ${LAMBDA} --image "${LAMBDA}:${VERSION}"
+
+push-app-local:
+	@aws lightsail push-container-image --region ${AWS_REGION} --service-name ${LAMBDA} --label ${LAMBDA} --image "${LAMBDA}:latest"	
+
 
 # --profile moove-it 
 	
