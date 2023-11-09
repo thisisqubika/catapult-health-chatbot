@@ -5,6 +5,7 @@ from prompts import get_system_prompt
 import boto3
 import logging
 import sys
+import os
 
 # Set up root logger to output to stdout
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -17,17 +18,26 @@ logger.info('This is an informational message.')
 st.title("🏥 Catapult-Healthcare Bot")
 
 
-
 def get_ssm_parameter(parameter_name):
     """Get parameter from SSM."""
     ssm = boto3.client('ssm', region_name="us-east-1")
     parameter = ssm.get_parameter(Name=parameter_name, WithDecryption=True)
     return parameter["Parameter"]["Value"]
 
-OPENAI_API_KEY = "/openai-api-key"
+
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+
+openai.api_key = OPENAI_API_KEY
+
+if not OPENAI_API_KEY:
+    raise ValueError("The OPENAI_API_KEY environment variable is not set.")
+
+
+openai.api_key = OPENAI_API_KEY
 
 # Initialize the chat messages history
-openai.api_key = get_ssm_parameter(OPENAI_API_KEY)
+# openai.api_key = get_ssm_parameter(OPENAI_API_KEY)
+
 if "messages" not in st.session_state:
     # system prompt includes table information, rules, and prompts the LLM to produce
     # a welcome message to the user.

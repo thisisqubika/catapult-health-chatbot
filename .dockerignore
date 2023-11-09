@@ -6,3 +6,4 @@ Makefile
 README.md
 terraform/
 tests/
+.env 
