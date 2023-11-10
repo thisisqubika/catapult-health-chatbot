@@ -58,7 +58,7 @@ tests:
 		--rootdir=. $${TEST};
 
 build:
-	@docker build --platform=linux/amd64 -t ${LAMBDA}:${VERSION} .
+	@docker build --build-arg OPENAI_API_KEY=$(grep OPENAI_API_KEY .env | cut -d '=' -f2) --platform=linux/amd64 -t ${LAMBDA}:${VERSION} .
 
 build-local-to-aws:
 	@docker build --platform=linux/amd64 -t ${LAMBDA} .
@@ -77,9 +77,10 @@ stop:
 
 run-dev:
 	@(\
+		export OPENAI_API_KEY=$$(cat .env | grep OPENAI_API_KEY | cut -d '=' -f2); \
 		if [ ! -d .venv ]; then make install; fi; \
 		source .venv/bin/activate; \
-		streamlit run src/app.py; \
+		python src/app.py; \
 	)
 
 .PHONY: tests docs

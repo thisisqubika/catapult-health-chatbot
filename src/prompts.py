@@ -47,11 +47,14 @@ Then provide 3 example questions using bullet points.
 
 
 @st.cache_data(show_spinner=False)
-def get_table_context(table_name: str, table_description: str, metadata_query: str = None):
+def get_table_context(
+    table_name: str, table_description: str, metadata_query: str = None
+):
     table = table_name.split(".")
     # conn = st.experimental_connection("snowpark")
     conn = st.connection("snowflake")
-    columns = conn.query(f"""
+    columns = conn.query(
+        f"""
         SELECT COLUMN_NAME, DATA_TYPE FROM {table[0].upper()}.INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = '{table[1].upper()}' AND TABLE_NAME = '{table[2].upper()}'
         """,
@@ -82,17 +85,17 @@ Here are the columns of the {'.'.join(table)}
         context = context + f"\n\nAvailable variables by VARIABLE_NAME:\n\n{metadata}"
     return context
 
+
 def get_system_prompt():
     table_context = get_table_context(
         table_name=QUALIFIED_TABLE_NAME,
         table_description=TABLE_DESCRIPTION,
-        metadata_query=METADATA_QUERY
+        metadata_query=METADATA_QUERY,
     )
     return GEN_SQL.format(context=table_context)
+
 
 # do `streamlit run prompts.py` to view the initial system prompt in a Streamlit app
 if __name__ == "__main__":
     st.header("System prompt for Catapult Health Bot")
     st.markdown(get_system_prompt())
-
-

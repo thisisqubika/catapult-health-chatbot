@@ -12,4 +12,5 @@ pandas
 numpy
 python-dotenv
 # snowflake-connector-python
+snowflake-connector-python
 snowflake-snowpark-python
