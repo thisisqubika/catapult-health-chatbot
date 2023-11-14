@@ -2,8 +2,7 @@ import json
 
 from index import handler
 
-event = {
-}
+event = {}
 
 context = {}
 

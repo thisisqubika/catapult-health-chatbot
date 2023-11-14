@@ -1,42 +1,33 @@
-import openai
-import re
-import streamlit as st
-from prompts import get_system_prompt
-import boto3
 import logging
-import sys
 import os
+import re
+import sys
+
+import openai
+import streamlit as st
+from dotenv import load_dotenv
+
+from prompts import get_system_prompt
+
+load_dotenv()
 
 # Set up root logger to output to stdout
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 # Example of logging in your application code
 logger = logging.getLogger(__name__)
-logger.info('This is an informational message.')
+logger.info("This is an informational message.")
 
 
 st.title("🏥 Catapult-Healthcare Bot")
 
 
-def get_ssm_parameter(parameter_name):
-    """Get parameter from SSM."""
-    ssm = boto3.client('ssm', region_name="us-east-1")
-    parameter = ssm.get_parameter(Name=parameter_name, WithDecryption=True)
-    return parameter["Parameter"]["Value"]
+openai.api_key = os.environ.get("OPENAI_API_KEY")
 
+# Initialize st.session_state if it's not already initialized
+if not hasattr(st, "session_state"):
+    st.session_state = {}
 
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-
-openai.api_key = OPENAI_API_KEY
-
-if not OPENAI_API_KEY:
-    raise ValueError("The OPENAI_API_KEY environment variable is not set.")
-
-
-openai.api_key = OPENAI_API_KEY
-
-# Initialize the chat messages history
-# openai.api_key = get_ssm_parameter(OPENAI_API_KEY)
 
 if "messages" not in st.session_state:
     # system prompt includes table information, rules, and prompts the LLM to produce
@@ -63,7 +54,10 @@ if st.session_state.messages[-1]["role"] != "assistant":
         resp_container = st.empty()
         for delta in openai.ChatCompletion.create(
             model="gpt-4",
-            messages=[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages],
+            messages=[
+                {"role": m["role"], "content": m["content"]}
+                for m in st.session_state.messages
+            ],
             stream=True,
         ):
             response += delta.choices[0].delta.get("content", "")

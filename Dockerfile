@@ -2,24 +2,28 @@
 FROM continuumio/miniconda3
 
 # Set the working directory in the container
-WORKDIR /usr/src/app
+#WORKDIR /usr/src/app
+WORKDIR /src
 
 # Copy the current directory contents into the container at /usr/src/app
 COPY . /usr/src/app
 
 # Create the Conda environment
-RUN conda create --name snowpark-llm-chatbot --override-channels -c conda-forge python=3.10 numpy pandas
+RUN conda create --name snowpark-llm-chatbot --override-channels -c conda-forge python=3.10 numpy pandas python-dotenv
 
 # Make RUN commands use the new environment:
 SHELL ["conda", "run", "-n", "snowpark-llm-chatbot", "/bin/bash", "-c"]
 
 # Attempt to install the required packages in the created Conda environment with retries
-RUN for i in {1..5}; do conda install -c conda-forge snowflake-snowpark-python openai && break || sleep 15; done
+RUN for i in {1..5}; do conda install -c conda-forge snowflake-snowpark-python openai && break || sleep 1; done
 
 # Install Streamlit
 RUN pip install streamlit openai==0.28.0 boto3
 
-# Make src/app.py executable
+# Copy the content of the local src directory to the working directory
+COPY . /src/
+
+#grant permission to execute
 RUN chmod +x ./src/app.py
 
 # Expose the port the app runs on

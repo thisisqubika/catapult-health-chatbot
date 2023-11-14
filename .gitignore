@@ -143,3 +143,5 @@ response.json
 # Misc
 .vscode
 *.DS_Store
+
+.env
