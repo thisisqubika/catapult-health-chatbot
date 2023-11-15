@@ -58,8 +58,9 @@ tests:
 		--rootdir=. $${TEST};
 
 build:
-	@docker build --build-arg OPENAI_API_KEY=$(grep OPENAI_API_KEY .env | cut -d '=' -f2) --platform=linux/amd64 -t ${LAMBDA}:${VERSION} .
+	@docker build --platform=linux/amd64 -t ${LAMBDA}:${VERSION} .
 
+# --build-arg OPENAI_API_KEY=$(grep OPENAI_API_KEY .env | cut -d '=' -f2) 
 build-local-to-aws:
 	@docker build --platform=linux/amd64 -t ${LAMBDA} .
 
