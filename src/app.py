@@ -13,8 +13,6 @@ load_dotenv()
 
 # Set up root logger to output to stdout
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-
-# Example of logging in your application code
 logger = logging.getLogger(__name__)
 logger.info("This is an informational message.")
 
@@ -43,7 +41,6 @@ for message in st.session_state.messages:
             st.dataframe(message["results"])
 
 # If last message is not from assistant, we need to generate a new response
-
 if st.session_state.messages[-1]["role"] != "assistant":
     with st.chat_message("assistant"):
         response = ""
@@ -63,29 +60,32 @@ if st.session_state.messages[-1]["role"] != "assistant":
                 ):
                     response += delta.choices[0].delta.get("content", "")
                     resp_container.markdown(response)
-                
-                message = {"role": "assistant", "content": response}
 
-                # Parse the response for a SQL query
-                sql_match = re.search(r"```sql\n(.*)\n```", response, re.DOTALL)
-                if sql_match:
-                    sql = sql_match.group(1)
+                # Find all SQL queries in the response and take the last one
+                sql_queries = re.findall(r"```sql\n(.*?)\n```", response, re.DOTALL)
+                if sql_queries:
+                    sql = sql_queries[-1]  # Execute only the last SQL query
                     conn = st.connection("snowflake")
-                    message["results"] = conn.query(sql)
-                    st.dataframe(message["results"])
-                
-                st.session_state.messages.append(message)
-                # If successful, exit the loop
-                break
+                    try:
+                        message["results"] = conn.query(sql)
+                        st.dataframe(message["results"])
+                        break
+                    except ProgrammingError as e:
+                        logger.error(f"SQL Execution Error: {e}")
+                        # Do not increase retry_count here as we want to retry with the same response
+                else:
+                    logger.error("No SQL query found in response.")
+                    break  # Exit the loop if no SQL found
 
-            except (requests.exceptions.ChunkedEncodingError, ProgrammingError) as e:
+                retry_count += 1
+
+            except requests.exceptions.ChunkedEncodingError as e:
                 retry_count += 1
                 logger.error(f"Error occurred: {e}. Retrying...")
 
         if retry_count == max_retries:
             logger.error("Max retries reached. Unable to get a response.")
             # Handle the case where max retries have been reached
-
-
-# #############################
-################################
+        
+        message = {"role": "assistant", "content": response}
+        st.session_state.messages.append(message)
