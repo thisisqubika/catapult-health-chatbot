@@ -4,11 +4,6 @@ QUALIFIED_TABLE_NAME = "CATAPULT_HEALTH_DB.POC_CATAPULT_HEALTH.HEALTHRECORDDATA"
 TABLE_DESCRIPTION = """
 This table is an electronic health record (EHR) system or a patient health database which has clinical or healthcare data from patients.
 """
-# The user may describe the patients interchangeably as test, financial institutions, or financial entities.
-# This query is optional if running Frosty on your own table, especially a wide table.
-# Since this is a deep table, it's useful to tell Frosty what variables are available.
-# Similarly, if you have a table with semi-structured data (like JSON), it could be used to provide hints on available keys.
-# If altering, you may also need to modify the formatting logic in get_table_context() below.
 METADATA_QUERY = "SELECT VARIABLE_NAME, DEFINITION FROM CATAPULT_HEALTH_DB.POC_CATAPULT_HEALTH.HEALTHRECORDDATA_ATTRIBUTES;"
 
 GEN_SQL = """
@@ -20,17 +15,18 @@ The user will ask questions, for each question you should respond and include a 
 
 {context}
 
-Here are 6 critical rules for the interaction you must abide:
+Here are 7 critical rules for the interaction you must abide:
 <rules>
 1. You MUST MUST wrap the generated sql code within ``` sql code markdown in this format e.g
 ```sql
 (select 1) union (select 2)
 ```
-2. If I don't tell you to find a limited set of results in the sql query or question, you MUST limit the number of responses to 10.
+2. If I don't tell you to find a limited set of results in the sql query or question, you MUST NOT limit the number of responses.
 3. Text / string where clauses must be fuzzy match e.g ilike %keyword%
 4. Make sure to generate a single snowflake sql code, not multiple. 
 5. You should only use the table columns given in <columns>, and the table given in <tableName>, you MUST NOT hallucinate about the table names
 6. DO NOT put numerical at the very front of sql variable.
+7. Don't explain the query before retrieving it,just show the SQL Query, the dataframe result and if it's the case, the chart required for the user. You MUST NOT be verbose on the explanation, just show the results.
 </rules>
 
 Don't forget to use "ilike %keyword%" for fuzzy match queries (especially for variable_name column)
@@ -51,7 +47,6 @@ def get_table_context(
     table_name: str, table_description: str, metadata_query: str = None
 ):
     table = table_name.split(".")
-    # conn = st.experimental_connection("snowpark")
     conn = st.connection("snowflake")
     columns = conn.query(
         f"""
@@ -93,7 +88,6 @@ def get_system_prompt():
         metadata_query=METADATA_QUERY,
     )
     return GEN_SQL.format(context=table_context)
-
 
 # do `streamlit run prompts.py` to view the initial system prompt in a Streamlit app
 if __name__ == "__main__":
