@@ -1,0 +1,35 @@
+# Use an official miniconda image as a parent image
+FROM continuumio/miniconda3
+
+# Set the working directory in the container
+#WORKDIR /usr/src/app
+WORKDIR /src
+
+# Copy the current directory contents into the container at /usr/src/app
+COPY . /usr/src/app
+
+# Create the Conda environment
+RUN conda create --name snowpark-llm-chatbot --override-channels -c conda-forge python=3.10 numpy pandas python-dotenv
+
+# Make RUN commands use the new environment:
+SHELL ["conda", "run", "-n", "snowpark-llm-chatbot", "/bin/bash", "-c"]
+
+# Attempt to install the required packages in the created Conda environment with retries
+RUN for i in {1..5}; do conda install -c conda-forge snowflake-snowpark-python snowflake openai plotly langchain_experimental && break || sleep 1; done
+
+# Install Streamlit
+RUN pip install streamlit openai==0.28.0 boto3
+
+# Copy the content of the local src directory to the working directory
+COPY . /src/
+
+#grant permission to execute
+RUN chmod +x ./src/app.py
+
+# Expose the port the app runs on
+EXPOSE 8501
+
+# Set the command to run the Streamlit app
+CMD ["conda", "run", "--no-capture-output", "-n", "snowpark-llm-chatbot", "streamlit", "run", "./src/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+
+
