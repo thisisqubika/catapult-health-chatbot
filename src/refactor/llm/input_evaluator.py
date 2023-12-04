@@ -5,12 +5,10 @@ from langchain.prompts import PromptTemplate
 from langchain.schema.language_model import BaseLanguageModel
 from langchain.schema.output_parser import OutputParserException
 from parsers import input_evaluator_parser # este es tu parser!
-from dotenv import load_dotenv, find_dotenv
 from config import OPENAI_API_KEY
 import json
 import re
 
-load_dotenv(find_dotenv())
 
 LLM = ChatOpenAI(
     temperature=0.0,
@@ -36,14 +34,16 @@ These are all cases where sql responses are not needed.
 Here are a Few-shot examples of user input and expected output:
 
 User input: Hi, how are you?
-Your response: is_a_query = False, include_barchart = False, simple_answer = True
+Your response: is_a_query = False, include_chart = False, simple_answer = True
 
 User input: I need a pie chart of sales by country
-Your response: is_a_query = True, include_barchart = True, simple_answer = False
+Your response: is_a_query = True, include_chart = True, simple_answer = False
 
 User input: How many customers we have this week?
-Your response: is_a_query = True, include_barchart = False, simple_answer = False
+Your response: is_a_query = True, include_chart = False, simple_answer = False
 
+User input: How does the population of Company One compare with other companies in this industry?
+Your response: is_a_query = True, include_chart = False, simple_answer = False
 
 The user input is delimited by four consecutive backticks.
 

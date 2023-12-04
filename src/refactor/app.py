@@ -36,6 +36,8 @@ if st.session_state.messages[-1]["role"] != "system":
                 st.dataframe(message["results"])
 
 
+
+
 # If last message is not from assistant, we need to generate a new response:
 if st.session_state.messages[-1]["role"] != "assistant":
     with st.chat_message("assistant"):

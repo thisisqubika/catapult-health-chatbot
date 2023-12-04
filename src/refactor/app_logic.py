@@ -2,7 +2,7 @@ from llm.input_evaluator import InputEvaluatorLLM
 from llm.query_generator import QueryGeneratorLLM
 from llm.system_generator import SystemGeneratorLLM
 from llm.simple_generator import SimpleGeneratorLLM
-# from llm.chart_generator import ChartGeneratorLLM
+from llm.error_feedback import ErrorFeedbackLLM
 from llm.chart_generator_with_sql import ChartGeneratorLLMFromSQL
 from config import create_session
 from snowflake.connector import ProgrammingError
@@ -10,6 +10,8 @@ from snowflake.snowpark.exceptions import SnowparkSQLException
 import re
 import streamlit as st
 import pandas as pd
+import random
+
 
 class AppLogic:
     def __init__(self):
@@ -24,39 +26,99 @@ class AppLogic:
     def handle_input(self, prompt, session_state):
         user_input = prompt
         if user_input:
-
             # Evaluate the user input
             evaluation = self.input_evaluator.evaluate(user_input)
-            
             if evaluation.is_a_query:
-                # Generate the SQL query
-                query_generator = QueryGeneratorLLM(_snowflake_session=self.session_created)
-
                 attempts = 0
                 max_retries = 3
+                error_feedback = None
 
                 while attempts < max_retries:
-                    query_to_snowflake = query_generator.generate_sql_query(user_input)
                     resp_container = st.empty()
-                    
-                    response = resp_container.markdown(query_to_snowflake)
-                    message = {"role": "assistant", "content": response}
+                    try:
+                        # Generate the SQL query
+                        if error_feedback:
+                            resp_container.info("Error encountered: trying again...")
+                            query_generator = ErrorFeedbackLLM(self.snowflake_session)
+                            query_to_snowflake = query_generator.generate_response(user_input, error_feedback)
+                        else:
+                            query_generator = QueryGeneratorLLM(self.snowflake_session)
+                            query_to_snowflake = query_generator.generate_response(user_input)
 
-                    sql_queries = re.findall(r"```sql\n(.*?)\n```", query_to_snowflake, re.DOTALL)
-                    if sql_queries:
-                        query = sql_queries[-1]
-                        try:
-                            message['results'] = self.session_created.sql(query).collect()
-                            st.dataframe(message["results"])
-                            # Append results to the chat history
-                            session_state.messages.append(message)
+                        # Extract SQL queries from the response
+                        sql_queries = re.findall(r"```sql\n(.*?)\n```", query_to_snowflake, re.DOTALL)
+                        if sql_queries:
+                            for query in sql_queries:
+                                result = self.session_created.sql(query).collect()
+                                message = {"role": "assistant", "content": result, "results": result}
+                                st.dataframe(result)
+                                session_state.messages.append(message)
+
+                            # Clear the error placeholder now that we have a successful query
+                            # resp_container.empty()
+                            break 
+
+                    except (ProgrammingError, SnowparkSQLException) as e:
+                        # Capture the error feedback and show it in the placeholder
+                        error_feedback = str(e)
+                        resp_container.error(f"Attempt {attempts + 1} failed: {e}")
+                        attempts += 1
+                        if attempts >= max_retries:
+                            resp_container.error("All attempts failed.")
                             break
+    
+            
 
-                        except (ProgrammingError, SnowparkSQLException) as e:
-                            st.warning(f"Attempt {attempts + 1} failed: {e}")
-                            # new_loader.empty()
-                            attempts += 1
-                            # return session_state
+            # if evaluation.is_a_query:
+            #     attempts = 0
+            #     max_retries = 3
+            #     error_feedback = None
+                
+            #     while attempts < max_retries:
+            #         try:
+            #             # If there was an error previously, use ErrorFeedbackLLM
+            #             if error_feedback:
+            #                 error_feedback_llm = ErrorFeedbackLLM(self.snowflake_session)
+            #                 query_to_snowflake = error_feedback_llm.generate_response(user_input, error_feedback)
+
+            #                 # Find all SQL queries in the generated output
+            #                 sql_queries = re.findall(r"```sql\n(.*?)\n```", query_to_snowflake, re.DOTALL)
+                            
+            #                 if sql_queries:
+            #                     for query in sql_queries:
+            #                         result = self.session_created.sql(query).collect()
+            #                         message = {"role": "assistant", "content": query, "results": result}
+            #                         st.dataframe(result)
+            #                         session_state.messages.append(message.copy())
+
+            #                     # Exit the loop if successful
+            #                     break 
+
+            #             else:
+            #                 query_generator = QueryGeneratorLLM(_snowflake_session=self.snowflake_session)
+            #                 query_to_snowflake = query_generator.generate_response(user_input)
+
+            #                 # Find all SQL queries in the generated output
+            #                 sql_queries = re.findall(r"```sql\n(.*?)\n```", query_to_snowflake, re.DOTALL)
+                            
+            #                 if sql_queries:
+            #                     for query in sql_queries:
+            #                         result = self.session_created.sql(query).collect()
+            #                         message = {"role": "assistant", "content": query, "results": result}
+            #                         st.dataframe(result)
+            #                         session_state.messages.append(message.copy())
+
+            #                     # Exit the loop if successful
+            #                     break 
+                                
+            #         except (ProgrammingError, SnowparkSQLException) as e:
+            #             # Capture the error feedback
+            #             error_feedback = str(e)
+            #             attempts += 1
+            #             if attempts >= max_retries:
+            #                 # Handle max retries exceeded
+            #                 break
+
                         
                 if evaluation.include_chart:
                     new_loader = st.empty()
@@ -88,7 +150,6 @@ class AppLogic:
                 # if attempts == max_retries:
                 #     st.error("Failed to execute query after several attempts.")
                         
-                #CHECK IF WE ALSO NEED A GRAPH:
 
                 else:
                     return session_state
@@ -97,7 +158,7 @@ class AppLogic:
             else:
                 # Handle non-query input (e.g., greetings, thanks)
                 simple_generator = SimpleGeneratorLLM(_snowflake_session=self.snowflake_session)
-                response = simple_generator.generate_response()
+                response = simple_generator.generate_response(user_input)
                 message = {"role": "assistant", "content": response}
                 session_state.messages.append(message)
                 return session_state

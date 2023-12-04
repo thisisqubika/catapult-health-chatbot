@@ -5,6 +5,8 @@ import os
 import streamlit as st
 from snowflake.snowpark import Session
 from sqlalchemy.dialects import registry
+from snowflake.connector import connect, ProgrammingError
+
 
 load_dotenv(find_dotenv())
 registry.load('snowflake')
@@ -28,8 +30,7 @@ global snowflake_session
 snowflake_session = None
 
 def create_session():
-    global snowflake_session
-    if snowflake_session is None:
+    try:
         snowflake_session = Session.builder.configs({
             "account": ACCOUNT,
             "user": USER,
@@ -39,6 +40,21 @@ def create_session():
             "database": DATABASE,
             "schema": SCHEMA
         }).create()
+
+    except ProgrammingError as e:
+        if "Authentication token has expired" in str(e):
+            snowflake_session = Session.builder.configs({
+                "account": ACCOUNT,
+                "user": USER,
+                "password": PASSWORD,
+                "role": ROLE,
+                "warehouse": WAREHOUSE,
+                "database": DATABASE,
+                "schema": SCHEMA
+            }).create()
+        
+        else:
+            raise  # Re-raise the exception if it's not a token expiration issue
 
     return snowflake_session
 

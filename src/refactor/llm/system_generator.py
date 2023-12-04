@@ -4,7 +4,6 @@ from langchain.prompts import PromptTemplate
 from langchain.schema.language_model import BaseLanguageModel
 import streamlit as st
 from snowflake.snowpark import Session
-import os
 from langchain_experimental.sql import SQLDatabaseChain
 from config import db, OPENAI_API_KEY
 from llm.streamming_handler import StreamHandler

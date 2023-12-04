@@ -4,10 +4,9 @@ from langchain.prompts import PromptTemplate
 from langchain.schema.language_model import BaseLanguageModel
 import streamlit as st
 from snowflake.snowpark import Session
-from sqlalchemy.dialects import registry
-from langchain_experimental.sql import SQLDatabaseChain
 from llm.streamming_handler import StreamHandler
-from config import OPENAI_API_KEY,db
+from config import OPENAI_API_KEY
+
 
 LLM = ChatOpenAI(
     temperature=0.0,
@@ -15,7 +14,6 @@ LLM = ChatOpenAI(
     streaming=True,
     openai_api_key=OPENAI_API_KEY
 )
-
 
 QUALIFIED_TABLE_NAME = "CATAPULT_HEALTH_DB.POC_CATAPULT_HEALTH.HEALTHRECORDDATA"
 
@@ -27,12 +25,12 @@ METADATA_QUERY = "SELECT VARIABLE_NAME, DEFINITION FROM CATAPULT_HEALTH_DB.POC_C
 
 
 SYSTEM_TEMPLATE = """
-Your goal is to give correct, executable Snowflake sql query to users.
-You will be acting as an AI Snowflake SQL Expert named Catapult Health Bot.
-You will be replying to users who will be confused if you don't respond in the character of Catapult Health Bot.
+Your goal is to give correct, executable SNOWFLAKE SQL queries to users.
+The user is coming to you to get a solution to a snowflake sql query that has been wrongly created with syntax errors.
+You will be provided with the user input and the error recieved in the previous snowflake sql query, 
 You are given one table, the table name is in <tableName> tag, the columns are in <columns> tag.
 The user will ask questions, for each question you should return only the snowflake sql query based on the question and the table, delimited by triple backticks.
-Remember: The "FILTER" function does not exist in snowflake sql. Just create sql queries that work on Snowflake, you must use existing snowflake SQL syntax
+
 
 {context}
 
@@ -85,7 +83,10 @@ DO NOT RETURN ANYTHING ELSE. JUST THE SNOWFLAKE SQL QUERY.
 User input:
 {user_input}
 
-Your generated snowflake query:
+The error in the previous snowflake sql query:
+{error_feedback}
+
+Your generated snowflake query without errors:
 """
 
 
@@ -129,24 +130,15 @@ def get_table_context(_snowflake_session: Session, table_name: str, table_descri
 
 
 
-class QueryGeneratorLLM:
-    def __init__(self, _snowflake_session:Session, llm: BaseLanguageModel = LLM,system_template: str = SYSTEM_TEMPLATE):
+class ErrorFeedbackLLM:
+    def __init__(self,  _snowflake_session:Session, llm: BaseLanguageModel = LLM, error_feedback_template: str = SYSTEM_TEMPLATE):
         self.llm = llm
-        self.template = system_template
         self.snowflake_session = _snowflake_session
+        self.error_feedback_template = error_feedback_template
         self.stream_handler = StreamHandler(st.empty())
 
-    def _get_connection(self):
-        # create connection:
-        db_chain = SQLDatabaseChain.from_llm(
-            llm=self.llm,
-            db=db,
-            verbose=True,
-            return_direct=True)
-        
-        return db_chain.run
-    
-    def _build_prompt(self, user_input: str) -> PromptTemplate:
+
+    def _build_prompt(self, user_input: str, error_feedback: str) -> PromptTemplate:
         table_context = get_table_context(
             _snowflake_session=self.snowflake_session,
             table_name=QUALIFIED_TABLE_NAME,
@@ -154,32 +146,24 @@ class QueryGeneratorLLM:
             metadata_query=METADATA_QUERY)
 
         # Now format the template with both context and user_input
-        formatted_template = self.template.format(context=table_context, user_input=user_input)
+        formatted_template = self.error_feedback_template.format(context=table_context, user_input=user_input, error_feedback=error_feedback)
 
         return str(PromptTemplate.from_template(
             template=formatted_template,
-            variables=["user_input"],
+            variables=["user_input","error_feedback"],
         ))
 
-    def generate_sql_query(self, user_input: str) -> str:
-        chain_instance = self._build_chain(user_input)  # Pass user input here
-        # return chain_instance.predict(text=user_input)
-        response_stream = chain_instance.predict(text=user_input)
-        response = ""
-        for chunk in response_stream:
-            response += chunk
-        return response
 
-
-    def _build_chain(self, user_input: str) -> LLMChain:
+    def _build_chain(self, user_input: str, error_feedback:str) -> LLMChain:
         return LLMChain(
             llm=self.llm,
-            prompt=self._build_prompt(user_input),  # Pass user input here
+            prompt=self._build_prompt(user_input,error_feedback),  # Pass user input here
             verbose=True
             )
-    
-    def generate_response(self, user_input: str)-> str:
-        prompt = self._build_prompt(user_input)
+
+
+    def generate_response(self, user_input: str, error_feedback: str)-> str:
+        prompt = self._build_prompt(user_input,error_feedback)
         response_stream = self.llm.stream(prompt)
 
         # Clear the existing text in the stream handler
@@ -194,6 +178,3 @@ class QueryGeneratorLLM:
         response = self.stream_handler.text.replace("content=", "").strip()
 
         return response
-
-
-    
