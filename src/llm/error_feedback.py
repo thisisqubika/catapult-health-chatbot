@@ -2,10 +2,9 @@ from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.schema.language_model import BaseLanguageModel
-import streamlit as st
 from snowflake.snowpark import Session
-from llm.streamming_handler import StreamHandler
-from config import OPENAI_API_KEY
+from src.llm.streamming_handler import StreamHandler
+from src.config import OPENAI_API_KEY
 
 
 LLM = ChatOpenAI(
@@ -90,7 +89,6 @@ Your generated snowflake query without errors:
 """
 
 
-@st.cache_data(show_spinner=False)
 def get_table_context(_snowflake_session: Session, table_name: str, table_description: str, metadata_query: str = None ):
     table = table_name.split(".")
     # Execute the query

@@ -6,8 +6,8 @@ import streamlit as st
 from snowflake.snowpark import Session
 from sqlalchemy.dialects import registry
 from langchain_experimental.sql import SQLDatabaseChain
-from llm.streamming_handler import StreamHandler
-from config import OPENAI_API_KEY,db
+from src.llm.streamming_handler import StreamHandler
+from src.config import OPENAI_API_KEY,db
 
 LLM = ChatOpenAI(
     temperature=0.0,

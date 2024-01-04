@@ -2,10 +2,9 @@ from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.schema.language_model import BaseLanguageModel
-import streamlit as st
 from snowflake.snowpark import Session
 from langchain_experimental.sql import SQLDatabaseChain
-from config import OPENAI_API_KEY,db
+from src.config import OPENAI_API_KEY,db
 
 LLM = ChatOpenAI(
     temperature=0.0,
@@ -13,7 +12,6 @@ LLM = ChatOpenAI(
     streaming=True,
     openai_api_key=OPENAI_API_KEY
 )
-
 
 QUALIFIED_TABLE_NAME = "CATAPULT_HEALTH_DB.POC_CATAPULT_HEALTH.HEALTHRECORDDATA"
 
@@ -25,13 +23,19 @@ METADATA_QUERY = "SELECT VARIABLE_NAME, DEFINITION FROM CATAPULT_HEALTH_DB.POC_C
 
 
 SYSTEM_TEMPLATE = """
-Your goal is to create charts or graphs for users with python code, you MUST use the Plotly python library for this tasks.
+Your goal is to create charts or graphs for users request with python code based on Snowflake SQL Queries you will recieve, 
+you MUST use the Plotly python library for this tasks.
+You will recieve a list of ROW objects. The Row object is a built-in data structure in many data processing libraries, including pandas in Python.
+You need to convert these list of ROW objects into charts or graphs with Plotly and pandas libraries from python.
+The user will provide you instructions for the creation of the charts and also you will recieve the data to create those charts as a list of ROW objects, for each question you should return only the charts or graphs based on the list of ROW ojects delimited by triple backticks.
+You should be able to provide different types of charts, depending of the user's request:
+pie charts, histograms, bar charts, line charts, etc.
+
 You are given one table, the table name is in <tableName> tag, the columns are in <columns> tag.
-The user will ask questions, for each question you should return only the charts or graphs based on the question and the table, delimited by triple backticks.
 
 {context}
 
-Here are 2 critical rules for the interaction you must abide:
+Here are 4 critical rules for the interaction you must abide:
 <rules>
 1. You MUST MUST wrap the generated python code within ``` python code markdown in this format e.g
 ```python
@@ -46,18 +50,20 @@ show a bar chart..., show a pie chart..., show a line chart... plot a bar chart.
 </rules>
 
 
-For each question from the user, make sure to include a chart in your response.
+For each User request containing the chunk of data recieved in a list of ROW objects , make sure to include a chart in your response.
 
 DO NOT RETURN ANYTHING ELSE. JUST THE CHARTS.
 
 User input:
 {user_input}
 
+these is the list of ROW objects:
+{sql_query}
+
 Your generated chart:
 """
 
-
-@st.cache_data(show_spinner=False)
+# @st.cache_data(show_spinner=False)
 def get_table_context(_snowflake_session: Session, table_name: str, table_description: str, metadata_query: str = None ):
     table = table_name.split(".")
     # Execute the query
@@ -97,7 +103,7 @@ def get_table_context(_snowflake_session: Session, table_name: str, table_descri
 
 
 
-class ChartGeneratorLLM:
+class ChartGeneratorLLMFromSQL:
     def __init__(self, _snowflake_session:Session, llm: BaseLanguageModel = LLM,system_template: str = SYSTEM_TEMPLATE):
         self.llm = llm
         self.template = system_template
@@ -113,7 +119,7 @@ class ChartGeneratorLLM:
         
         return db_chain.run
     
-    def _build_prompt(self, user_input: str) -> PromptTemplate:
+    def _build_prompt(self, user_input: str, sql_query: str) -> PromptTemplate:
         table_context = get_table_context(
             _snowflake_session=self.snowflake_session,
             table_name=QUALIFIED_TABLE_NAME,
@@ -121,26 +127,26 @@ class ChartGeneratorLLM:
             metadata_query=METADATA_QUERY)
 
         # Now format the template with both context and user_input
-        formatted_template = self.template.format(context=table_context, user_input=user_input)
+        formatted_template = self.template.format(context=table_context, user_input=user_input, sql_query=sql_query)
 
         return PromptTemplate.from_template(
             template=formatted_template,
-            variables=["user_input"],
+            variables=["user_input","sql_query"],
         )
 
-    def generate_chart(self, user_input: str) -> str:
-        chain_instance = self._build_chain(user_input)  # Pass user input here
-        # return chain_instance.predict(text=user_input)
-        response_stream = chain_instance.predict(text=user_input)
+    def generate_chart(self, user_input: str, sql_query: str) -> str:
+        chain_instance = self._build_chain(user_input,sql_query)  # Pass user input here
+        # return chain_instance.predict(text=sql_query)
+        response_stream = chain_instance.predict(user_input=user_input, sql_query=sql_query)
         response = ""
         for chunk in response_stream:
             response += chunk
         return response
 
 
-    def _build_chain(self, user_input: str) -> LLMChain:
+    def _build_chain(self, user_input: str ,sql_query: str) -> LLMChain:
         return LLMChain(
             llm=self.llm,
-            prompt=self._build_prompt(user_input),  # Pass user input here
+            prompt=self._build_prompt(user_input, sql_query),  # Pass user input here
             verbose=True
             )

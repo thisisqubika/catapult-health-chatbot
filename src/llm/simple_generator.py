@@ -2,11 +2,10 @@ from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.schema.language_model import BaseLanguageModel
-import streamlit as st
 from snowflake.snowpark import Session
 from langchain_experimental.sql import SQLDatabaseChain
-from config import db, OPENAI_API_KEY
-from llm.streamming_handler import StreamHandler
+from src.config import db, OPENAI_API_KEY
+from src.llm.streamming_handler import StreamHandler
 
 
 LLM = ChatOpenAI(
@@ -72,7 +71,7 @@ class SimpleGeneratorLLM:
         self.llm = llm
         self.template = simple_template
         self.snowflake_session = _snowflake_session
-        self.stream_handler = StreamHandler(st.empty())
+        self.stream_handler = StreamHandler()
     
     def _get_connection(self):
         # create connection:

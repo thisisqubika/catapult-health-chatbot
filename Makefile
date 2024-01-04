@@ -1,8 +1,8 @@
 SHELL=/bin/bash
 PATH := .venv/bin:$(PATH)
 export TEST?=./tests
-export LAMBDA?=catapult-health-chatbot
-export IMG_NAME=img-catapult-health-chatbot
+export LAMBDA?=catapult-health-api
+export IMG_NAME=img-catapult-health-api
 export IMAGE_TAG=latest
 export REPO=lambda-${LAMBDA}
 export ENV?=dev
@@ -10,9 +10,7 @@ export AWS_REGION=us-east-1
 export AWS_ACCOUNT_ID=789524919849
 export ECR_URL=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 export TAG_NAME=${LAMBDA}-${ENV}
-# export VERSION=latest
-export VERSION=$(shell git rev-parse --short HEAD)
-
+export VERSION=latest
 
 install:
 	@( \
@@ -57,67 +55,109 @@ tests:
 		--junit-xml=junit.xml \
 		--rootdir=. $${TEST};
 
-build:
-	@docker build --platform=linux/amd64 -t ${LAMBDA}:${VERSION} .
+build-package:
+	@echo "Building package";
+	@if [ ! -d terraform/global/build ]; then mkdir ./terraform/global/build; fi;
+	@pip install -r requirements.txt -t ./requirements;
+	@cp -r ./requirements ./temporary_directory/;
+	@cp -r  ./src ./temporary_directory/;
+	@cp ./requirements.txt ./index.py ./temporary_directory/;
+	@(cd ./temporary_directory && zip -r llm-llama-to-endpoint.zip ./*);
+	@if [ -d ./terraform/global/build/requirements ]; then rm -r ./terraform/global/build/requirements; fi;
+	@mv ./requirements ./temporary_directory/llm-llama-to-endpoint.zip ./terraform/global/build/;
+	@rm -r ./temporary_directory;
 
-# --build-arg OPENAI_API_KEY=$(grep OPENAI_API_KEY .env | cut -d '=' -f2) 
-build-local-to-aws:
-	@docker build --platform=linux/amd64 -t ${LAMBDA} .
-
-push:
-	@aws lightsail push-container-image --service-name "${LAMBDA}" --label "${LAMBDA}" --image "${LAMBDA}:${VERSION}"
-
-local-build:
-	@docker build -t ${LAMBDA} .
-
-run:
-	@docker run -d -p 8501:8501 ${LAMBDA}
-# :${VERSION}
-stop:
-	@docker stop $$(docker ps -a -q)
-
-run-dev:
-	@(\
-		export OPENAI_API_KEY=$$(cat .env | grep OPENAI_API_KEY | cut -d '=' -f2); \
-		if [ ! -d .venv ]; then make install; fi; \
-		source .venv/bin/activate; \
-		python src/app.py; \
+validate-tf-workspaces:
+	@( \
+		cd terraform/workspaces;  \
+		terraform init; \
+		printf "\033[0;34mValidating workspaces...\034\n"; \
+		terraform validate; \
 	)
 
-.PHONY: tests docs
+validate-tf:
+	@( \
+		cd terraform/global;  \
+		terraform init; \
+		printf "\033[0;34mValidating terraform...\034\n"; \
+		terraform validate; \
+	)
+
+validate-plan: 
+	@( \
+		cd terraform;  \
+		terraform init; \
+		printf "\033[0;34mValidating terraform...\034\n"; \
+		terraform validate; \
+		printf "\033[0;34mPlanning terraform...\034\n"; \
+		terraform plan; \
+	)
+
+validate-apply:
+	@( \
+		cd terraform;  \
+		terraform init; \
+		printf "\033[0;34mValidating terraform...\034\n"; \
+		terraform validate; \
+		printf "\033[0;34mPlanning terraform...\034\n"; \
+		terraform plan; \
+		printf "\033[0;34mApplying terraform...\034\n"; \
+		terraform apply -auto-approve; \
+	)
+
+invoke-local:
+	@cat event.local.json | base64 > event.local.base64
+	@aws lambda invoke --function-name $${LAMBDA} --payload file://event.local.base64 response.json
+	@if [ -f response.json ]; then python -B -m json.tool response.json; fi
+	@rm -f event.local.base64
+
+build:
+	@docker build --platform=linux/amd64 -t ${IMG_NAME} .
+
+local-build:
+	@docker build -t ${IMG_NAME} .
+
+to-ecr:
+	@$(shell ./push_ecr.sh ${AWS_ACCOUNT_ID} ${AWS_REGION})
 
 create-ecr:
-	@aws lightsail create-container-service --service-name ${LAMBDA} --power nano --scale 1
+	@$(shell   aws ecr create-repository \
+    --repository-name  ${IMG_NAME} \
+    --image-scanning-configuration scanOnPush=true \
+    --region ${AWS_REGION})
 
-push-app:
-	@aws lightsail push-container-image --region ${AWS_REGION} --service-name ${LAMBDA} --label ${LAMBDA} --image "${LAMBDA}:${VERSION}"
+image-tag:
+	@docker tag ${IMG_NAME} ${ECR_URL}/${IMG_NAME}:${IMAGE_TAG}
 
-push-app-local:
-	@aws lightsail push-container-image --region ${AWS_REGION} --service-name ${LAMBDA} --label ${LAMBDA} --image "${LAMBDA}:latest"	
-
-
-# --profile moove-it 
+#do aws login and push to ecr
+push-ecr:
+	@aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URL}
+	@docker push ${ECR_URL}/${IMG_NAME}:${IMAGE_TAG}
 	
-# deploy:
-# 	@$(eval IMAGE_TAG := $(shell git rev-parse --short HEAD))
-# 	@$(eval FULL_IMAGE_NAME := "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${LAMBDA}:${IMAGE_TAG}")
 
-# 	@sed -i "s|:catapult-health-chatbot.catapult-health-chatbot:TAG_PLACEHOLDER|${FULL_IMAGE_NAME}|g" containers.json
-# 	@aws lightsail create-container-service-deployment --service-name ${LAMBDA} --containers file://containers.json --public-endpoint file://public-endpoint.json
+#create lambda function with the latest image
+create-lambda:
+	@aws lambda create-function \
+		--function-name ${LAMBDA} \
+		--package-type Image \
+		--timeout 300 \
+		--memory-size 128 \
+		--code ImageUri=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMG_NAME}:${VERSION} \
+		--role arn:aws:iam::${AWS_ACCOUNT_ID}:role/lambda-llm-llama-to-endpoint-demo
 
-# IMG_TAG en vez de VERSION en la segunda linea del deploy que tiene la FULL_IMAGE_NAME	
-deploy:
-	@$(eval IMAGE_TAG := $(shell git rev-parse --short HEAD))
-	@$(eval FULL_IMAGE_NAME := "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${LAMBDA}:${VERSION}")
-	@sed "s|your-image-name|${FULL_IMAGE_NAME}|g" containers-template.json > containers.json
-	@sed "s|catapult-health-chatbot|${LAMBDA}|g" public-endpoint-template.json > public-endpoint.json
-	@aws lightsail create-container-service-deployment --service-name ${LAMBDA} --containers file://containers.json --public-endpoint file://public-endpoint.json
+update-lambda:
+	@aws lambda update-function-code \
+		--function-name ${LAMBDA} \
+		--image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${IMG_NAME}:${VERSION}
 
-check-state:
-	@aws lightsail get-container-services --service-name ${LAMBDA}
+run-dev:
+	@( \
+		if [ ! -d .venv ];then python3 -m venv .venv;fi; \
+		source .venv/bin/activate; \
+		python3 index.py; \
+	)
 
-cleanup:
-	@aws lightsail delete-container-service --service-name ${LAMBDA}
+run:
+	@docker run -d -p 8000:5000 ${IMG_NAME}
 
-get-version:
-	@echo $(VERSION)
+.PHONY: tests docs

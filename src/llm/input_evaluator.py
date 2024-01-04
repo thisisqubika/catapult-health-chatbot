@@ -4,8 +4,8 @@ from langchain.output_parsers import PydanticOutputParser
 from langchain.prompts import PromptTemplate
 from langchain.schema.language_model import BaseLanguageModel
 from langchain.schema.output_parser import OutputParserException
-from parsers import input_evaluator_parser # este es tu parser!
-from config import OPENAI_API_KEY
+from src.parsers import input_evaluator_parser # este es tu parser!
+from src.config import OPENAI_API_KEY
 import json
 import re
 

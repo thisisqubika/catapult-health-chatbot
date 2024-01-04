@@ -1,0 +1,27 @@
+llm:
+  endpoints:
+    - llm_name: llama2-7b
+      endpoint_name: meta-textgeneration-llama-2-7b-2023-11-22-18-44-46-948
+    - llm_name: llama2-13b
+      endpoint_name: llama-2-13b
+    - llm_name: gpt-4-preview
+      endpoint_name: gpt-4-1106-preview
+  parameters:
+    max_tokens: 1024
+    top_p: 0.9
+    temperature: 0.6
+    return_full_text: false
+    verbose: false
+    openai_api_key: ""
+    stream: false
+    
+  memory:
+    table: qubika-chatbot-qbot-memory-metadata
+
+aws:
+  region: us-east-1
+
+
+
+  #     - llm_name: chatgpt-4
+  # gpt-4-1106-preview
